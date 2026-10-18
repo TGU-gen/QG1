@@ -1957,8 +1957,19 @@ server <- function(input, output, session) {
     df <- get_cor_data()
     r_xy <- cor(df$x, df$y)
     
+    # 95% elipsa spočtená v základním R (bez závislosti na balíčku MASS,
+    # který stat_ellipse() používá a který nemusí být v nasazeném prostředí dostupný)
+    ctr <- colMeans(df[, c("x", "y")])
+    S   <- cov(df[, c("x", "y")])
+    eg  <- eigen(S, symmetric = TRUE)
+    tt  <- seq(0, 2 * pi, length.out = 200)
+    circ <- rbind(cos(tt), sin(tt)) * sqrt(qchisq(0.95, df = 2))
+    ell <- t(ctr + eg$vectors %*% (sqrt(pmax(eg$values, 0)) * circ))
+    ell <- data.frame(x = ell[, 1], y = ell[, 2])
+    
     ggplot(df, aes(x = x, y = y)) +
-      stat_ellipse(geom = "polygon", alpha = 0.1, fill = "#0072B2", color = "#0072B2", linewidth = 1) +
+      geom_polygon(data = ell, aes(x = x, y = y), inherit.aes = FALSE,
+                   alpha = 0.1, fill = "#0072B2", color = "#0072B2") +
       geom_point(color = "#0072B2", size = 3, alpha = 0.8) +
       labs(title = paste0("Korelační diagram s konfidenční elipsou (r = ", round(r_xy, 3), ")"),
            subtitle = "Dvourozměrné rozdělení znaků X a Y bez předpokladu kauzality",
@@ -1967,8 +1978,7 @@ server <- function(input, output, session) {
       theme(plot.title = element_text(face = "bold"),
             panel.background = element_rect(fill = "white", color = NA),
             plot.background = element_rect(fill = "white", color = NA))
-  })
-  
+  })  
   output$out_cov_matrix <- renderPrint({
     df <- get_cor_data()
     cov(df)

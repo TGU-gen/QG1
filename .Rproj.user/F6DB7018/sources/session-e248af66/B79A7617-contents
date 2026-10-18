@@ -1,0 +1,174 @@
+# Cv. 5  importování dat do R, popisná statistika (parametry tředu a variability)
+
+# standardní nastavení working directory
+getwd()
+setwd("xxxx")
+dir.create("....")
+
+
+
+# 1) import dat do R
+
+  # manuální vložení dat jako vektor
+data1 <- c(11,4,9,8,12,17,3,5,16,15)
+data1
+
+  # manuální vložení dat jako tabulka
+data2 <-
+  ("id;y
+  1;11
+  2;4
+  3;9
+  4;8
+  5;12
+  6;17
+  7;3
+  8;5
+  9;16
+  10;15")
+data2
+
+   # objekt data2 s textem je třeba převést pomocí funkce read.table() a textConnection() na tabulku
+data2a <- read.table(textConnection(data2),
+                     header = TRUE,         # první řádek je hlavička 
+                     sep = ";",          # data jsou oddělena středníky
+                     row.names = "id")   # hodnoty sloupce id budou sloužit k pojmenování řádků databáze
+data2a
+
+### 3  načtení dat z externího textového souboru z pracovního adresáře, kam jste si předtím soubor data1a.csv nahráli 
+
+data3 <- read.table("data1a.csv", header = TRUE, sep=";", row.names = "id")
+data3
+
+
+#### 4 Export dat do Excelu v R
+
+# METODA: Balíček writexl 
+
+# Instalace balíčku (pokud ještě není nainstalován)
+install.packages("writexl")
+library(writexl)
+
+# Příklad 1: Export data3 do Excelu s jedním listem
+data <- data3
+
+# Export do Excelu
+write_xlsx(data, "data3_export.xlsx")
+ 
+# Příklad 2: Export více listů do jednoho Excel souboru
+list_data <- list(
+  "Experiment" = data3,          
+  "Experiment2" = data.frame(
+    y = data3$y,
+    Populace = c("A","B","A","B","A","B","A","B","A","B")
+  )
+)
+
+write_xlsx(list_data, "data1b.xlsx")
+
+
+#### 5 načtení dat z excelovské tabulky, která je v souboru data1b.xlsx
+
+###!!!! Využijeme nabídku v RStudiu: File > Import Dataset > From Excel...
+### pokud máte soubor v pracovním adresáři, vyberete ho a označíte pojmenování dat "data4"
+library(readxl)
+data4 <- read_excel("data1b.xlsx", sheet = "Experiment2")
+View(data4)
+
+data4         # data4 se zobrazí v Console
+
+# uložení objektů s daty ve formátu R - RData
+# save.image(file = "data.RData")  # všech dat (objektů) do souboru „.RData“ v aktuálním pracovním adresáři
+data5 <- data4  # vytvoříme se nová data z data4
+save(data5, file="data5.RData") # pouze vybraných dat (data5)
+
+# načtení dat ze souboru *.RData
+
+load("data5.RData")   # načtení naší databáze data4 z pracovního adresáře
+data5
+
+# Základní informace
+cat("Dimenze datasetu:", dim(data5)[1], "řádků,", dim(data5)[2], "sloupců\n")
+cat("Názvy sloupců:", paste(names(data5), collapse = ", "), "\n\n")
+
+# Struktura
+cat("=== STRUKTURA DAT ===\n")
+str(data5)
+
+cat("\n=== PRVNÍCH 6 ŘÁDKŮ ===\n")
+print(head(data5))
+
+cat("\n=== STATISTICKÉ SHRNUTÍ ===\n")
+print(summary(data5))
+
+# Interaktivní zobrazení (otevře se nové okno v RStudio)
+View(data5)
+
+############################################################
+####### Popisná statistika
+############################################################
+
+# průměr
+soucet <- sum(data5$y)
+soucet
+n <- length(data5$y)
+n
+prumer <- soucet/n
+prumer
+
+mean(data5$y)   # nativní funkce pro průměru v R
+
+# variance/rozptyl: součet čtverců odchylek od průměru (SS) / stupně volnosti (df)
+
+# součet čtverců odchylek od průměru
+# SS = S(y^2) - suma^2/n    >  součet čtverců - čtverec součtů
+SS <- sum(data5$y^2) - ((sum(data5$y))^2)/n
+SS
+# variance = SS/(n-1)
+s2y <- SS/(n-1)
+s2y
+# standard deviation - směrodatná odchylka (sd)
+sd <- sqrt(s2y)
+sd
+# standard error (se) - střední chyba průměru
+se <- sd/sqrt(n)
+se
+# variační koeficient %
+V <- (sd/prumer)*100
+V
+
+# souhrnná popisná statistika pomocí nativní funkce v R, summary()
+summary(data5$y)
+
+# využití balíčků v R, pro popisnou statistiku: Hmisc, psych a pastecs
+# pokud tyto balíčky nemáte, tak si je přes Install ve složce Packages stáhněte a nainstalujte
+
+# aktivovat balíček Hmisc
+describe(data5$y)
+# aktivovat balíček pastecs: library()
+stat.desc(data5$y)
+# aktivovat balíček psych
+psych::describe(data5$y)
+
+
+
+# zobrazení dat pomocí grafů
+# zde se nabízí jako nejvhodnější graf - krabicov graf (boxplot)
+boxplot(data5$y)
+# graf lze různě doplňovat přidáním dalších argumentů - postupně je přidávejte a všímejte si co se změní
+boxplot(data5$y, col = "gold", border = "brown",notch=TRUE, main="Vlastnost y", xlab="y", ylab="cm")
+
+# pokud do excelovské tabulky data1b.xlsx v pracovním adresáři přidáte druhý sloupce, nazvete jej Populace a budete střídat hodnoty "A" a "B", znovu načtete jako data5, pak můžete vytvořit boxplot s dvěma objekty podle populací A a B
+boxplot(y ~ Populace, 
+        data = data5, 
+        col = c("#00BB55", "#FF6B6B"),  # zelená a červená (hexadecimální kód)
+        border = "#5478AE",
+        main = "Srovnání vlastnosti y mezi populacemi", 
+        xlab = "Populace", 
+        ylab = "Hodnota [cm]",
+        las = 1)
+
+    # pro barvy jsme použili hexadecimální kód zápisu barvy (https://cs.wikipedia.org/wiki/Wikipedie:Tabulka_barev)
+
+
+
